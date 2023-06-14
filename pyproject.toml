@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xmlpydict_parser"
-version = "0.0.3"
+version = "0.0.4"
 description="xml to dictionary tool for python"
 authors = [
     {name = "Matthew Taylor", email = "matthew.taylor.andre@gmail.com"},
 ]
 urls = {Homepage = "https://github.com/MatthewAndreTaylor/xml-to-pydict"}
 requires-python = ">=3.7"
-keywords = [ "xml" ]
+keywords = [ "xml", "dictionary" ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

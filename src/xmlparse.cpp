@@ -22,7 +22,9 @@ typedef struct Node {
 } PathNode;
 
 std::regex primitiveRegex(".*<([a-zA-Z_]+)", std::regex_constants::icase);
-std::regex attrRegex(R"(([a-zA-Z][a-zA-Z0-9_-]*)=\"([^\"]*)\")",
+std::regex attrRegex(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*\"([^\"]*)\")",
+                     std::regex_constants::icase);
+std::regex attrRegexSingle(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*\'([^\']*)\')",
                      std::regex_constants::icase);
 std::regex selfclosingRegex(R"(\/>)", std::regex_constants::icase);
 std::regex closingtagRegex(R"(</\w+>)", std::regex_constants::icase);
@@ -53,6 +55,7 @@ PathNode ParsePrimitive(std::string &input) {
   std::string attributes = input.substr(pos);
 
   std::sregex_iterator it(attributes.begin(), attributes.end(), attrRegex);
+  std::sregex_iterator itt(attributes.begin(), attributes.end(), attrRegexSingle);
   std::sregex_iterator end;
 
   while (it != end) {
@@ -61,6 +64,14 @@ PathNode ParsePrimitive(std::string &input) {
     std::string attrValue = match.str(2);
     p.attr.push_back({std::move(attrName), std::move(attrValue)});
     ++it;
+  }
+
+  while (itt != end) {
+    std::smatch match = *itt;
+    std::string attrName = match.str(1);
+    std::string attrValue = match.str(2);
+    p.attr.push_back({std::move(attrName), std::move(attrValue)});
+    ++itt;
   }
   return p;
 }

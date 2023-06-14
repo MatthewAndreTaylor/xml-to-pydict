@@ -20,9 +20,7 @@ pip install xmlpydict_parser
 ```py
 >>> from xmlpydict_parser import parse
 >>> parse("<package><xmlpydict_parser language='python'/></package>")
-{
-    'package': {
-        'xmlpydict_parser' : { '@language' = 'python'}
-    }
-}
+{'package': {'xmlpydict_parser': {'@language': 'python'}}}
+>>> parse("<person name='Matthew'>Hello!</person>")
+{'person': {'@name': 'Matthew', '#text': 'Hello!'}}
 ```
