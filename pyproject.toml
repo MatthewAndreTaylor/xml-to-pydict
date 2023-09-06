@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xmlpydict_parser"
-version = "0.0.4"
+version = "0.0.5"
 description="xml to dictionary tool for python"
 authors = [
     {name = "Matthew Taylor", email = "matthew.taylor.andre@gmail.com"},
@@ -32,4 +32,4 @@ file = "README.md"
 content-type = "text/markdown"
 
 [project.optional-dependencies]
-tests = [ "pytest" ]
+tests = [ "pytest", "xmltodict" ]

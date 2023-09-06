@@ -22,11 +22,8 @@ typedef struct Node {
 } PathNode;
 
 std::regex primitiveRegex(".*<([a-zA-Z_]+)", std::regex_constants::icase);
-std::regex attrRegex(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*\"([^\"]*)\")",
-                     std::regex_constants::icase);
-std::regex attrRegexSingle(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*\'([^\']*)\')",
-                     std::regex_constants::icase);
-std::regex selfclosingRegex(R"(\/>)", std::regex_constants::icase);
+std::regex attrRegex(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*([\'\"])([^\'\"]*)\2)", std::regex_constants::icase);
+std::regex selfclosingRegex(R"(\/>)");
 std::regex closingtagRegex(R"(</\w+>)", std::regex_constants::icase);
 std::regex notCommentRegex("^(?!<!--)[\\s\\S]*?(?!-->)$");
 
@@ -55,59 +52,26 @@ PathNode ParsePrimitive(std::string &input) {
   std::string attributes = input.substr(pos);
 
   std::sregex_iterator it(attributes.begin(), attributes.end(), attrRegex);
-  std::sregex_iterator itt(attributes.begin(), attributes.end(), attrRegexSingle);
   std::sregex_iterator end;
 
   while (it != end) {
     std::smatch match = *it;
     std::string attrName = match.str(1);
-    std::string attrValue = match.str(2);
+    std::string attrValue = match.str(3);
     p.attr.push_back({std::move(attrName), std::move(attrValue)});
     ++it;
-  }
-
-  while (itt != end) {
-    std::smatch match = *itt;
-    std::string attrName = match.str(1);
-    std::string attrValue = match.str(2);
-    p.attr.push_back({std::move(attrName), std::move(attrValue)});
-    ++itt;
   }
   return p;
 }
 
 std::vector<std::string> splitNodes(const std::string &xmlContent) {
   std::vector<std::string> nodes;
-  std::istringstream xmlStream(xmlContent);
-  std::string line;
-  std::string currentNode;
-  std::string currentText;
-  std::string text;
-
-  while (std::getline(xmlStream, line)) {
-    currentNode += line;
-
-    // Check if the current node is complete (ends with ">") or a closing tag
-    std::smatch match;
-    std::regex regexPattern("<[^>]+>");
-    while (std::regex_search(currentNode, match, regexPattern)) {
-      std::string token = match.str();
-
-      text.clear();
-
-      // Extract the text between the nodes and push it to the nodes vector
-      std::regex textRegex(">([^<]+)<");
-      std::smatch textMatch;
-      if (std::regex_search(currentNode, textMatch, textRegex)) {
-        text = textMatch[1].str();
-      }
-
-      nodes.push_back(token);
-      if (!text.empty()) {
-        nodes.push_back(text);
-      }
-      currentNode = match.suffix().str();
-    }
+  std::regex pattern(R"(<[^>]+>|\S[^<>\n]+)");
+  std::sregex_iterator iterator(xmlContent.begin(), xmlContent.end(), pattern);
+  std::sregex_iterator end;
+  for (; iterator != end; ++iterator) {
+      std::smatch match = *iterator;
+      nodes.push_back(match.str());
   }
 
   return nodes;
