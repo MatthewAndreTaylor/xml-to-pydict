@@ -10,11 +10,23 @@ def test_simple():
     assert parse('<p width="10">Hello World</p>') == {
         "p": {"@width": "10", "#text": "Hello World"}
     }
+    assert parse('<p width="10" height="20"></p>') == {
+        "p": {"@width": "10", "@height": "20"}
+    }
+    assert parse('<p width="10" height="20"/>') == {
+        "p": {"@width": "10", "@height": "20"}
+    }
 
 
 def test_nested():
-    assert parse("<book><p/></book>") == {"book": {"p": {}}}
+    assert parse("<book><p/></book> ") == {"book": {"p": {}}}
     assert parse("<book><p></p></book>") == {"book": {"p": {}}}
+    assert parse("<book><p></p></book><card/>") == {"book": {"p": {}}, "card": {}}
+    assert parse("<pizza></pizza><book><p></p></book><card/>") == {
+        "pizza": {},
+        "book": {"p": {}},
+        "card": {},
+    }
 
 
 def test_list():
@@ -23,22 +35,6 @@ def test_list():
   <item id="2"></item>
   <item id="3"></item>
 </items>"""
-    assert parse(xml_items) == {
-        "items": {"item": [{"@id": "1"}, {"@id": "2"}, {"@id": "3"}]}
-    }
-    xml_items = """<items>
-      <item id="1"/>
-      <item id="2"/>
-      <item id="3"/>
-    </items>"""
-    assert parse(xml_items) == {
-        "items": {"item": [{"@id": "1"}, {"@id": "2"}, {"@id": "3"}]}
-    }
-    xml_items = """<items>
-          <item id="1"/>
-          <item id="2"></item>
-          <item id="3"/>
-        </items>"""
     assert parse(xml_items) == {
         "items": {"item": [{"@id": "1"}, {"@id": "2"}, {"@id": "3"}]}
     }

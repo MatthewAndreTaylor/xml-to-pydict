@@ -2,76 +2,100 @@
  * Copyright (c) 2023 Matthew Andre Taylor
  */
 #include <Python.h>
-#include <fstream>
-#include <regex>
-#include <sstream>
 #include <string>
 #include <vector>
 
-typedef enum { PRIMITVE, CONTAINER_OPEN, CONTAINER_CLOSE, TEXT } PrimitiveType;
+typedef enum { PRIMITIVE, CONTAINER_OPEN, CONTAINER_CLOSE, TEXT, COMMENT } NodeType;
 
 typedef struct {
   std::string key;
   std::string value;
 } Pair;
 
-typedef struct Node {
-  PrimitiveType type;
+typedef struct {
+  NodeType type;
   std::string elementName;
   std::vector<Pair> attr;
-} PathNode;
+} XMLNode;
 
-std::regex primitiveRegex(".*<([a-zA-Z_]+)", std::regex_constants::icase);
-std::regex attrRegex(R"(([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*([\'\"])([^\'\"]*)\2)", std::regex_constants::icase);
-std::regex selfclosingRegex(R"(\/>)");
-std::regex closingtagRegex(R"(</\w+>)", std::regex_constants::icase);
-std::regex notCommentRegex("^(?!<!--)[\\s\\S]*?(?!-->)$");
+std::vector<XMLNode> splitNodes(const std::string &xmlContent) {
+  std::vector<XMLNode> nodes;
+  
+  size_t i = 0;
+  while (i < xmlContent.size()) {
+    XMLNode node;
+    if (xmlContent[i] == '<') {
+      if (xmlContent[i + 1] == '/') {
+        node.type = CONTAINER_CLOSE;
+        while (xmlContent[i] != '>') {
+          i++;
+        }
+      } else if (xmlContent[i + 1] == '!') {
+        node.type = COMMENT;
+        while (xmlContent[i] != '>') {
+          i++;
+        }
+      } else {
+        node.type = CONTAINER_OPEN;
+        i++;
+      }
 
-PathNode ParsePrimitive(std::string &input) {
-  std::smatch match;
+      bool hasAttr = false;
 
-  PathNode p;
-  if (std::regex_search(input, match, primitiveRegex)) {
-    std::string name = match.str(1);
-    p.elementName = name;
-    if (std::regex_search(input, selfclosingRegex)) {
-      p.type = PRIMITVE;
+      std::string key = "";
+      std::string val = "";
+      bool inquotes = false;
+
+      // Extract element
+      node.elementName = "";
+      while (i < xmlContent.size() && xmlContent[i] != '>') {
+        bool isSpace = std::isspace(xmlContent[i]);
+        if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
+          node.type = PRIMITIVE;
+        } else if (!hasAttr && isSpace) {
+          hasAttr = true;
+        } else{
+          if (hasAttr) {
+            if (xmlContent[i] == '\'' || xmlContent[i] == '\"') {
+              inquotes = !inquotes;
+              if(!key.empty() && !val.empty() && !inquotes) {
+                node.attr.push_back({key, val});
+                key.clear();
+                val.clear();
+              }
+            } else if (inquotes) {
+              val.push_back(xmlContent[i]);
+            } else if (xmlContent[i] != '=' && !isSpace){
+              key.push_back(xmlContent[i]);
+            }
+          } else {
+            node.elementName.push_back(xmlContent[i]);
+          }
+        }
+        i++;
+      }
+      i++;
+
+      nodes.push_back(node);
     } else {
-      p.type = CONTAINER_OPEN;
+      // Text node
+      node.type = TEXT;
+      bool isSpace = false;
+
+      while (i < xmlContent.size() && xmlContent[i] != '<') {
+        if (isSpace || !std::isspace(xmlContent[i])) {
+          node.elementName.push_back(xmlContent[i]);
+          isSpace = true;
+        }
+        i++;
+      }
+      while (!node.elementName.empty() && std::isspace(node.elementName.back())) {
+          node.elementName.pop_back();
+      }
+      if (!node.elementName.empty()) {
+        nodes.push_back(node);
+      }
     }
-  } else if (std::regex_search(input, closingtagRegex)) {
-    p.type = CONTAINER_CLOSE;
-    return p;
-  } else {
-    p.type = TEXT;
-    p.elementName = input;
-    return p;
-  }
-  std::string::size_type pos = (match.size() > 0) ? match[0].length() : 0;
-
-  std::string attributes = input.substr(pos);
-
-  std::sregex_iterator it(attributes.begin(), attributes.end(), attrRegex);
-  std::sregex_iterator end;
-
-  while (it != end) {
-    std::smatch match = *it;
-    std::string attrName = match.str(1);
-    std::string attrValue = match.str(3);
-    p.attr.push_back({std::move(attrName), std::move(attrValue)});
-    ++it;
-  }
-  return p;
-}
-
-std::vector<std::string> splitNodes(const std::string &xmlContent) {
-  std::vector<std::string> nodes;
-  std::regex pattern(R"(<[^>]+>|\S[^<>\n]+)");
-  std::sregex_iterator iterator(xmlContent.begin(), xmlContent.end(), pattern);
-  std::sregex_iterator end;
-  for (; iterator != end; ++iterator) {
-      std::smatch match = *iterator;
-      nodes.push_back(match.str());
   }
 
   return nodes;
@@ -79,10 +103,9 @@ std::vector<std::string> splitNodes(const std::string &xmlContent) {
 
 static PyObject *createDict(const std::vector<Pair> &attributes) {
   PyObject *dict = PyDict_New();
-  for (size_t j = 0; j < attributes.size(); j++) {
-    const std::string &key = "@" + attributes[j].key;
-    const std::string &attrVal = attributes[j].value;
-    PyObject *val = PyUnicode_FromString(attrVal.c_str());
+  for (const Pair &attr : attributes) {
+    const std::string &key = "@" + attr.key;
+    PyObject *val = PyUnicode_FromString(attr.value.c_str());
     PyDict_SetItemString(dict, key.c_str(), val);
   }
 
@@ -98,9 +121,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
   }
 
   std::string content(xmlContent);
-
-  // Call the splitNodes and ParsePrimitive functions to process the XML
-  std::vector<std::string> nodes = splitNodes(content);
+  std::vector<XMLNode> nodes = splitNodes(content);
 
   PyObject *dict = PyDict_New();
 
@@ -108,60 +129,61 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
   std::vector<PyObject *> containerStack;
   containerStack.push_back(dict);
 
-  for (size_t i = 0; i < nodes.size(); i++) {
-    std::string &node = nodes[i];
-    PathNode parsedNode = ParsePrimitive(node);
+  bool isList = false;
 
-    PyObject *childKey = PyUnicode_FromString(parsedNode.elementName.c_str());
+  for (const XMLNode &node : nodes) {
+    PyObject *childKey = PyUnicode_FromString(node.elementName.c_str());
 
-    if (parsedNode.type == TEXT) {
-      if (std::regex_match(parsedNode.elementName, notCommentRegex)) {
-        PyObject *item = PyDict_GetItemString(currDict, "#text");
-        if (item != NULL) {
-          PyUnicode_Concat(item, childKey);
-        } else {
-          PyDict_SetItemString(currDict, "#text", childKey);
-        }
+    if (node.type == TEXT) {
+      PyObject *item = PyDict_GetItemString(currDict, "#text");
+      if (item != NULL) {
+        PyUnicode_Concat(item, childKey);
+      } else {
+        PyDict_SetItemString(currDict, "#text", childKey);
       }
-    } else if (parsedNode.type == CONTAINER_OPEN) {
-      PyObject *d = createDict(parsedNode.attr);
+    } else if (node.type == CONTAINER_OPEN) {
+      PyObject *d = createDict(node.attr);
 
       PyObject *item = PyDict_GetItem(currDict, childKey);
       if (item != NULL) {
         // Check if it is a List or dict
-        if (PyList_Check(item)) {
+        if (isList && PyList_Check(item)) {
           PyList_Append(item, d);
         } else {
           PyObject *children = PyList_New(0);
           PyList_Append(children, item);
           PyList_Append(children, d);
           PyDict_SetItem(currDict, childKey, children);
+          isList = true;
         }
       } else {
         PyDict_SetItem(currDict, childKey, d);
+        isList = false;
       }
 
       currDict = d;
       containerStack.push_back(d);
-    } else if (parsedNode.type == CONTAINER_CLOSE) {
+    } else if (node.type == CONTAINER_CLOSE) {
       containerStack.pop_back();
       currDict = containerStack.back();
-    } else {
-      PyObject *dom = createDict(parsedNode.attr);
+    } else if (node.type == PRIMITIVE){
+      PyObject *d = createDict(node.attr);
 
       PyObject *item = PyDict_GetItem(currDict, childKey);
       if (item != NULL) {
         // Check if it is a List or dict
-        if (PyList_Check(item)) {
-          PyList_Append(item, dom);
+        if (isList && PyList_Check(item)) {
+          PyList_Append(item, d);
         } else {
           PyObject *children = PyList_New(0);
           PyList_Append(children, item);
-          PyList_Append(children, dom);
+          PyList_Append(children, d);
           PyDict_SetItem(currDict, childKey, children);
+          isList = true;
         }
       } else {
-        PyDict_SetItem(currDict, childKey, dom);
+        PyDict_SetItem(currDict, childKey, d);
+        isList = false;
       }
     }
 
