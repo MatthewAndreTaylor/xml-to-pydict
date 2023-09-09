@@ -18,11 +18,11 @@ typedef struct {
   std::vector<Pair> attr;
 } XMLNode;
 
-std::vector<XMLNode> splitNodes(const std::string &xmlContent) {
+std::vector<XMLNode> splitNodes(const char *xmlContent) {
   std::vector<XMLNode> nodes;
   
   size_t i = 0;
-  while (i < xmlContent.size()) {
+  while (xmlContent[i] != '\0') {
     XMLNode node;
     if (xmlContent[i] == '<') {
       if (xmlContent[i + 1] == '/') {
@@ -48,7 +48,7 @@ std::vector<XMLNode> splitNodes(const std::string &xmlContent) {
 
       // Extract element
       node.elementName = "";
-      while (i < xmlContent.size() && xmlContent[i] != '>') {
+      while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
         bool isSpace = std::isspace(xmlContent[i]);
         if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
           node.type = PRIMITIVE;
@@ -82,7 +82,7 @@ std::vector<XMLNode> splitNodes(const std::string &xmlContent) {
       node.type = TEXT;
       bool isSpace = false;
 
-      while (i < xmlContent.size() && xmlContent[i] != '<') {
+      while (xmlContent[i] != '\0' && xmlContent[i] != '<') {
         if (isSpace || !std::isspace(xmlContent[i])) {
           node.elementName.push_back(xmlContent[i]);
           isSpace = true;
@@ -120,9 +120,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
     return NULL;
   }
 
-  std::string content(xmlContent);
-  std::vector<XMLNode> nodes = splitNodes(content);
-
+  std::vector<XMLNode> nodes = splitNodes(xmlContent);
   PyObject *dict = PyDict_New();
 
   PyObject *currDict = dict;
