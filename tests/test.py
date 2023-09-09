@@ -1,4 +1,4 @@
-import xmlpydict_parser
+import xmlpydict
 import xmltodict
 import timeit
 
@@ -20,5 +20,5 @@ s = """<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">
 
   <polygon points="350,200 400,250 400,150" fill="yellow" />
 </svg>"""
-print(timeit.timeit(lambda: xmlpydict_parser.parse(s), number=100))
+print(timeit.timeit(lambda: xmlpydict.parse(s), number=100))
 print(timeit.timeit(lambda: xmltodict.parse(s), number=100))

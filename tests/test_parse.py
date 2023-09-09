@@ -1,5 +1,5 @@
 import pytest
-from xmlpydict_parser import parse
+from xmlpydict import parse
 import json
 
 

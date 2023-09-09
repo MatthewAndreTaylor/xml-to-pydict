@@ -135,13 +135,8 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
     PyObject *childKey = PyUnicode_FromString(node.elementName.c_str());
 
     if (node.type == TEXT) {
-      PyObject *item = PyDict_GetItemString(currDict, "#text");
-      if (item != NULL) {
-        PyUnicode_Concat(item, childKey);
-      } else {
-        PyDict_SetItemString(currDict, "#text", childKey);
-      }
-    } else if (node.type == CONTAINER_OPEN) {
+      PyDict_SetItemString(currDict, "#text", childKey);
+    } else if (node.type == CONTAINER_OPEN || node.type == PRIMITIVE) {
       PyObject *d = createDict(node.attr);
 
       PyObject *item = PyDict_GetItem(currDict, childKey);
@@ -161,30 +156,13 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
         isList = false;
       }
 
-      currDict = d;
-      containerStack.push_back(d);
+      if (node.type == CONTAINER_OPEN) {
+        currDict = d;
+        containerStack.push_back(d);
+      }
     } else if (node.type == CONTAINER_CLOSE) {
       containerStack.pop_back();
       currDict = containerStack.back();
-    } else if (node.type == PRIMITIVE){
-      PyObject *d = createDict(node.attr);
-
-      PyObject *item = PyDict_GetItem(currDict, childKey);
-      if (item != NULL) {
-        // Check if it is a List or dict
-        if (isList && PyList_Check(item)) {
-          PyList_Append(item, d);
-        } else {
-          PyObject *children = PyList_New(0);
-          PyList_Append(children, item);
-          PyList_Append(children, d);
-          PyDict_SetItem(currDict, childKey, children);
-          isList = true;
-        }
-      } else {
-        PyDict_SetItem(currDict, childKey, d);
-        isList = false;
-      }
     }
 
     Py_DECREF(childKey);
@@ -199,8 +177,8 @@ static PyMethodDef XMLParserMethods[] = {
     {"parse", xml_parse, METH_VARARGS, xml_parse_doc}, {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef xmlparsermodule = {
-    PyModuleDef_HEAD_INIT, "xmlpydict_parser", NULL, -1, XMLParserMethods};
+    PyModuleDef_HEAD_INIT, "xmlpydict", NULL, -1, XMLParserMethods};
 
-PyMODINIT_FUNC PyInit_xmlpydict_parser() {
+PyMODINIT_FUNC PyInit_xmlpydict() {
   return PyModule_Create(&xmlparsermodule);
 }
