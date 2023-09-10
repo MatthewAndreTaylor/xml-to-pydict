@@ -18,8 +18,10 @@ typedef struct {
   std::vector<Pair> attr;
 } XMLNode;
 
-std::vector<XMLNode> splitNodes(const char *xmlContent) {
+static std::vector<XMLNode> splitNodes(const char *xmlContent) {
   std::vector<XMLNode> nodes;
+  std::string key = "";
+  std::string val = "";
   
   size_t i = 0;
   while (xmlContent[i] != '\0') {
@@ -27,12 +29,12 @@ std::vector<XMLNode> splitNodes(const char *xmlContent) {
     if (xmlContent[i] == '<') {
       if (xmlContent[i + 1] == '/') {
         node.type = CONTAINER_CLOSE;
-        while (xmlContent[i] != '>') {
+        while (xmlContent[i] != '>' && xmlContent[i] != '\0') {
           i++;
         }
       } else if (xmlContent[i + 1] == '!') {
         node.type = COMMENT;
-        while (xmlContent[i] != '>') {
+        while (xmlContent[i] != '>' && xmlContent[i] != '\0') {
           i++;
         }
       } else {
@@ -41,13 +43,9 @@ std::vector<XMLNode> splitNodes(const char *xmlContent) {
       }
 
       bool hasAttr = false;
-
-      std::string key = "";
-      std::string val = "";
       bool inquotes = false;
 
       // Extract element
-      node.elementName = "";
       while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
         bool isSpace = std::isspace(xmlContent[i]);
         if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
@@ -121,11 +119,9 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
   }
 
   std::vector<XMLNode> nodes = splitNodes(xmlContent);
-  PyObject *dict = PyDict_New();
-
-  PyObject *currDict = dict;
+  PyObject *currDict = PyDict_New();
   std::vector<PyObject *> containerStack;
-  containerStack.push_back(dict);
+  containerStack.push_back(currDict);
 
   bool isList = false;
 
@@ -143,9 +139,9 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
         if (isList && PyList_Check(item)) {
           PyList_Append(item, d);
         } else {
-          PyObject *children = PyList_New(0);
-          PyList_Append(children, item);
-          PyList_Append(children, d);
+          PyObject *children = PyList_New(2);
+          PyList_SetItem(children, 0, item); 
+          PyList_SetItem(children, 1, d); 
           PyDict_SetItem(currDict, childKey, children);
           isList = true;
         }
