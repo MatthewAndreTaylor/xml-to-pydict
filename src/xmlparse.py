@@ -1,48 +1,48 @@
-def parse(xmlContent: str) -> dict:
+def parse(xml_content: str) -> dict:
     i = 0
     key = "@"
     val = ""
-    xmlContent += " "
-    
-    curr_dict = {}
-    containerStack = [curr_dict]
+    xml_content += " "
 
-    while i < len(xmlContent):
+    curr_dict = {}
+    container_stack = [curr_dict]
+
+    while i < len(xml_content):
         element_name = ""
 
-        if xmlContent[i] == '<':
-            if xmlContent[i + 1] == '/':
-                containerStack.pop()
-                curr_dict = containerStack[-1]
-                i = xmlContent.find('>', i + 1)
-            elif xmlContent[i + 1] == '!':
-                i = xmlContent.find('>', i + 1)
+        if xml_content[i] == "<":
+            if xml_content[i + 1] == "/":
+                container_stack.pop()
+                curr_dict = container_stack[-1]
+                i = xml_content.find(">", i + 1)
+            elif xml_content[i + 1] == "!":
+                i = xml_content.find(">", i + 1)
             else:
                 i += 1
-                hasAttr = False
-                inquotes = False
-                isContainer = True
+                has_attr = False
+                in_quotes = False
+                is_container = True
                 d = {}
-                while i < len(xmlContent) and xmlContent[i] != '>':
-                    isSpace = xmlContent[i].isspace()
-                    if xmlContent[i] == '/' and xmlContent[i + 1] == '>':
-                        isContainer = False
-                    elif not hasAttr and isSpace:
-                        hasAttr = True
+                while i < len(xml_content) and xml_content[i] != ">":
+                    is_space = xml_content[i].isspace()
+                    if xml_content[i] == "/" and xml_content[i + 1] == ">":
+                        is_container = False
+                    elif not has_attr and is_space:
+                        has_attr = True
                     else:
-                        if hasAttr:
-                            if xmlContent[i] == '\'' or xmlContent[i] == '\"':
-                                inquotes = not inquotes
-                                if not inquotes and key != "" and val != "":
+                        if has_attr:
+                            if xml_content[i] == "'" or xml_content[i] == '"':
+                                in_quotes = not in_quotes
+                                if not in_quotes and key != "" and val != "":
                                     d[key] = val
                                     key = "@"
                                     val = ""
-                            elif inquotes:
-                                val += xmlContent[i]
-                            elif xmlContent[i] != '=' and not isSpace:
-                                key += xmlContent[i]
+                            elif in_quotes:
+                                val += xml_content[i]
+                            elif xml_content[i] != "=" and not is_space:
+                                key += xml_content[i]
                         else:
-                            element_name += xmlContent[i]
+                            element_name += xml_content[i]
                     i += 1
                 item = curr_dict.get(element_name)
                 if item is None:
@@ -52,17 +52,17 @@ def parse(xmlContent: str) -> dict:
                         item.append(d)
                     else:
                         curr_dict[element_name] = [item, d]
-                if isContainer:
+                if is_container:
                     curr_dict = d
-                    containerStack.append(d)
+                    container_stack.append(d)
             i += 1
         else:
-            j = xmlContent.find('<', i + 1)
+            j = xml_content.find("<", i + 1)
             if j < 0:
-                return containerStack.pop()
-            element_name = xmlContent[i:j].strip()
+                return container_stack.pop()
+            element_name = xml_content[i:j].strip()
             i = j
             if len(element_name) > 0:
                 curr_dict["#text"] = element_name
 
-    return containerStack.pop()
+    return container_stack.pop()

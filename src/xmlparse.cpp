@@ -27,7 +27,7 @@ static void parseContainerClose(XMLNode* node, const char *xmlContent) {
     node->elementName.push_back(xmlContent[i]);
     i++;
   } else {
-    PyErr_Format(PyExc_Exception, "not well formed (naming violation at pos=%d)", i);
+    PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
     return;
   }
 
@@ -36,16 +36,17 @@ static void parseContainerClose(XMLNode* node, const char *xmlContent) {
       node->elementName.push_back(xmlContent[i]);
     } else if (std::isspace(xmlContent[i])){
       if (node->elementName.empty()) {
-        PyErr_Format(PyExc_Exception, "not well formed (expected Name at pos=%d)", i);
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
         return;
       }
     } else {
-      PyErr_Format(PyExc_Exception, "not well formed (naming violation at pos=%d)", i);
+      PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
       return;
     }
     i++;
   }
   i++;
+  return;
 }
 
 static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
@@ -55,13 +56,11 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
     node->elementName.push_back(xmlContent[i]);
     i++;
   } else {
-    PyErr_Format(PyExc_Exception, "not well formed (naming violation at pos=%d)", i);
+    PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
     return;
   }
 
   bool hasAttr = false;
-
-  char state = 0; // 0: start, 1: name, 2: equals, 3: quote, 4: value
 
   // Parse name
   while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
@@ -76,16 +75,18 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
       i++;
     } else if (std::isspace(xmlContent[i])){
       if (node->elementName.empty()) {
-        PyErr_Format(PyExc_Exception, "not well formed (no name at pos=%d)", i);
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
         return;
       }
       hasAttr = true;
       break;
     } else {
-      PyErr_Format(PyExc_Exception, "not well formed (naming violation at pos=%d)", i);
+      PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
       return;
     }
   }
+
+  char state = 0; // 0: space, 1: start, 2: name, 3: equals, 4: quote, 5: value
 
   if (hasAttr) {
     std::string key;
@@ -96,46 +97,60 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
       if (state == 0) {
         if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
           node->type = PRIMITIVE;
-          i+=2;
+          i++;
+          break;
+        }
+        if (std::isspace(xmlContent[i])) {
+          i++;
+          state=1;
+        } else {
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
           return;
+        }
+      }
+      else if (state == 1) {
+        if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
+          node->type = PRIMITIVE;
+          i++;
+          break;
         }
 
         if (std::isspace(xmlContent[i])) {
           i++;
         } else if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':') {
-          state = 1;
+          state = 2;
           key.push_back(xmlContent[i]);
           i++;
         } else {
-          PyErr_Format(PyExc_Exception, "not well formed (attribute naming violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
           return;
         }
-      } else if (state == 1) {
+      } else if (state == 2) {
         if (xmlContent[i] == '=') {
-          state = 3;
+          state = 4;
         } else if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
           key.push_back(xmlContent[i]);
         } else if (std::isspace(xmlContent[i])) {
-          state = 2;
-        } else {
-          PyErr_Format(PyExc_Exception, "not well formed (attribute naming violation at pos=%d)", i);
-          return;
-        }
-        i++;
-      } else if (state == 2) {
-        if (xmlContent[i] == '=') {
           state = 3;
-        } else if (!std::isspace(xmlContent[i])) {
-          PyErr_Format(PyExc_Exception, "not well formed (attribute naming violation at pos=%d)", i);
+        } else {
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
           return;
         }
         i++;
       } else if (state == 3) {
-        if (xmlContent[i] == '\'' || xmlContent[i] == '\"') {
+        if (xmlContent[i] == '=') {
           state = 4;
+        } else if (!std::isspace(xmlContent[i])) {
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          return;
+        }
+        i++;
+      } else if (state == 4) {
+        if (xmlContent[i] == '\'' || xmlContent[i] == '\"') {
+          state = 5;
           quoteType = xmlContent[i];
         } else if (!std::isspace(xmlContent[i])) {
-          PyErr_Format(PyExc_Exception, "not well formed (attribute naming violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
           return;
         }
         i++;
@@ -152,18 +167,20 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
       }
     }
   }
-  if (state != 0) {
-    PyErr_Format(PyExc_Exception, "not well formed (attribute naming violation at pos=%d)", i);
+  if (state > 1) {
+    PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
     return;
   }
   i++;
+  return;
 }
 
 static void parseComment(XMLNode* node, const char *xmlContent) {
   node->type = COMMENT;
   i++;
   if (xmlContent[i] != '-' || xmlContent[i+1] != '-') {
-    PyErr_Format(PyExc_Exception, "not well formed (expected '-' at pos=%d)", i);
+    PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+    return;
   }
   i+=2;
 
@@ -171,7 +188,8 @@ static void parseComment(XMLNode* node, const char *xmlContent) {
     if (xmlContent[i] == '-' && xmlContent[i + 1] == '-' && xmlContent[i + 2] == '>') {
       // Found the end of the comment
       if (xmlContent[i-1] == '-') {
-        PyErr_Format(PyExc_Exception, "not well formed (invalid '-' at pos=%d)", i-1);
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i-1);
+        return;
       }
       i += 3;
       return;
@@ -179,6 +197,7 @@ static void parseComment(XMLNode* node, const char *xmlContent) {
     i++;
   }
   PyErr_SetString(PyExc_Exception, "unclosed token");
+  return;
 }
 
 static void parseText(XMLNode* node, const char *xmlContent) {
@@ -187,7 +206,8 @@ static void parseText(XMLNode* node, const char *xmlContent) {
 
   while (xmlContent[i] != '\0' && xmlContent[i] != '<') {
     if (xmlContent[i] == '&') {
-      PyErr_Format(PyExc_Exception, "not well formed (naming violation at pos=%d)", i);
+      PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+      return;
     }
     if (isSpace || !std::isspace(xmlContent[i])) {
       node->elementName.push_back(xmlContent[i]);
@@ -195,7 +215,7 @@ static void parseText(XMLNode* node, const char *xmlContent) {
     }
     i++;
   }
-  while (!node->elementName.empty() && std::isspace(node->elementName.back())) {
+  while (std::isspace(node->elementName.back())) {
     node->elementName.pop_back();
   }
 }
@@ -246,6 +266,9 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
   }
 
   std::vector<XMLNode> nodes = splitNodes(xmlContent);
+  if (PyErr_Occurred() != NULL) {
+    return NULL;
+  }
   PyObject *currDict = PyDict_New();
   std::vector<std::string> containerStackNames;
   std::vector<PyObject *> containerStack;
@@ -286,7 +309,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
       }
     } else if (node.type == CONTAINER_CLOSE) {
       if (containerStackNames.back() != node.elementName) {
-        PyErr_Format(PyExc_Exception, "tag mismatch (%U does not match the last start tag)", childKey);
+        PyErr_Format(PyExc_Exception, "tag mismatch ('%U' does not match the last start tag)", childKey);
       }
       containerStackNames.pop_back();
       containerStack.pop_back();

@@ -17,6 +17,47 @@ def test_simple():
         "p": {"@width": "10", "@height": "20"}
     }
 
+    assert (
+        parse(
+            """<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:rgb(255,255,0);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(255,0,0);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="100" fill="url(#gradient)" />
+</svg>"""
+        )
+        == {
+            "svg": {
+                "@height": "100",
+                "@width": "200",
+                "@xmlns": "http://www.w3.org/2000/svg",
+                "defs": {
+                    "linearGradient": {
+                        "@id": "gradient",
+                        "@x1": "0%",
+                        "@x2": "100%",
+                        "@y1": "0%",
+                        "@y2": "0%",
+                        "stop": [
+                            {
+                                "@offset": "0%",
+                                "@style": "stop-color:rgb(255,255,0);stop-opacity:1",
+                            },
+                            {
+                                "@offset": "100%",
+                                "@style": "stop-color:rgb(255,0,0);stop-opacity:1",
+                            },
+                        ],
+                    }
+                },
+                "rect": {"@fill": "url(#gradient)", "@height": "100", "@width": "200"},
+            }
+        }
+    )
+
 
 def test_nested():
     assert parse("<book><p/></book> ") == {"book": {"p": {}}}
@@ -217,3 +258,20 @@ def test_files():
     )
 
     assert svg_data == json_data
+
+
+def test_exception():
+    xml_strings = [
+        "< p/>",
+        "<p>",
+        "<p/ >",
+        "<p height'10'/>",
+        "<p height='10'width='5'/>",
+        "<p width='5/>",
+        "<p width=5'/>",
+        "</p>",
+        "<pwidth='5'/>",
+    ]
+    for xml_str in xml_strings:
+        with pytest.raises(Exception):
+            parse(xml_str)
