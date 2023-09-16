@@ -5,7 +5,13 @@
 #include <string>
 #include <vector>
 
-typedef enum { PRIMITIVE, CONTAINER_OPEN, CONTAINER_CLOSE, TEXT, COMMENT } NodeType;
+typedef enum {
+  PRIMITIVE,
+  CONTAINER_OPEN,
+  CONTAINER_CLOSE,
+  TEXT,
+  COMMENT
+} NodeType;
 
 typedef struct {
   std::string key;
@@ -20,10 +26,11 @@ typedef struct {
 
 size_t i;
 
-static void parseContainerClose(XMLNode* node, const char *xmlContent) {
+static void parseContainerClose(XMLNode *node, const char *xmlContent) {
   node->type = CONTAINER_CLOSE;
   i++;
-  if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':') {
+  if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' ||
+      xmlContent[i] == ':') {
     node->elementName.push_back(xmlContent[i]);
     i++;
   } else {
@@ -32,11 +39,13 @@ static void parseContainerClose(XMLNode* node, const char *xmlContent) {
   }
 
   while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
-    if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
+    if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' ||
+        xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
       node->elementName.push_back(xmlContent[i]);
-    } else if (std::isspace(xmlContent[i])){
+    } else if (std::isspace(xmlContent[i])) {
       if (node->elementName.empty()) {
-        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                     i);
         return;
       }
     } else {
@@ -46,13 +55,13 @@ static void parseContainerClose(XMLNode* node, const char *xmlContent) {
     i++;
   }
   i++;
-  return;
 }
 
-static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
+static void parseContainerOpen(XMLNode *node, const char *xmlContent) {
   node->type = CONTAINER_OPEN;
 
-  if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':') {
+  if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' ||
+      xmlContent[i] == ':') {
     node->elementName.push_back(xmlContent[i]);
     i++;
   } else {
@@ -64,18 +73,20 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
 
   // Parse name
   while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
-    if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
+    if (xmlContent[i] == '/' && xmlContent[i + 1] == '>') {
       node->type = PRIMITIVE;
-      i+=2;
+      i += 2;
       return;
     }
 
-    if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
+    if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' ||
+        xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
       node->elementName.push_back(xmlContent[i]);
       i++;
-    } else if (std::isspace(xmlContent[i])){
+    } else if (std::isspace(xmlContent[i])) {
       if (node->elementName.empty()) {
-        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                     i);
         return;
       }
       hasAttr = true;
@@ -86,7 +97,8 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
     }
   }
 
-  char state = 0; // 0: space, 1: start, 2: name, 3: equals, 4: quote, 5: value
+  // 0: space, 1: start, 2: name, 3: equals, 4: quote, 5: value
+  char state = 0;
 
   if (hasAttr) {
     std::string key;
@@ -94,67 +106,79 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
     char quoteType = 0;
 
     while (xmlContent[i] != '\0' && xmlContent[i] != '>') {
-      if (state == 0) {
-        if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
+      switch (state) {
+      case 0:
+        if (xmlContent[i] == '/' && xmlContent[i + 1] == '>') {
           node->type = PRIMITIVE;
-          i++;
-          break;
-        }
-        if (std::isspace(xmlContent[i])) {
-          i++;
-          state=1;
-        } else {
-          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          i += 2;
           return;
         }
-      }
-      else if (state == 1) {
-        if (xmlContent[i] == '/' && xmlContent[i+1] == '>') {
-          node->type = PRIMITIVE;
-          i++;
-          break;
-        }
-
         if (std::isspace(xmlContent[i])) {
           i++;
-        } else if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':') {
+          state = 1;
+        } else {
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                       i);
+          return;
+        }
+        break;
+      case 1:
+        if (xmlContent[i] == '/' && xmlContent[i + 1] == '>') {
+          node->type = PRIMITIVE;
+          i += 2;
+          return;
+        }
+        if (std::isspace(xmlContent[i])) {
+          i++;
+        } else if (std::isalpha(xmlContent[i]) || xmlContent[i] == '_' ||
+                   xmlContent[i] == ':') {
           state = 2;
           key.push_back(xmlContent[i]);
           i++;
         } else {
-          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                       i);
           return;
         }
-      } else if (state == 2) {
+        break;
+      case 2:
         if (xmlContent[i] == '=') {
           state = 4;
-        } else if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' || xmlContent[i] == ':' || xmlContent[i] == '-' || xmlContent[i] == '.') {
+        } else if (std::isalnum(xmlContent[i]) || xmlContent[i] == '_' ||
+                   xmlContent[i] == ':' || xmlContent[i] == '-' ||
+                   xmlContent[i] == '.') {
           key.push_back(xmlContent[i]);
         } else if (std::isspace(xmlContent[i])) {
           state = 3;
         } else {
-          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                       i);
           return;
         }
         i++;
-      } else if (state == 3) {
+        break;
+      case 3:
         if (xmlContent[i] == '=') {
           state = 4;
         } else if (!std::isspace(xmlContent[i])) {
-          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                       i);
           return;
         }
         i++;
-      } else if (state == 4) {
+        break;
+      case 4:
         if (xmlContent[i] == '\'' || xmlContent[i] == '\"') {
           state = 5;
           quoteType = xmlContent[i];
         } else if (!std::isspace(xmlContent[i])) {
-          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+          PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                       i);
           return;
         }
         i++;
-      } else {
+        break;
+      default:
         if (xmlContent[i] == quoteType) {
           state = 0;
           node->attr.push_back({key, val});
@@ -164,6 +188,7 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
           val.push_back(xmlContent[i]);
         }
         i++;
+        break;
       }
     }
   }
@@ -172,23 +197,24 @@ static void parseContainerOpen(XMLNode* node, const char *xmlContent) {
     return;
   }
   i++;
-  return;
 }
 
-static void parseComment(XMLNode* node, const char *xmlContent) {
+static void parseComment(XMLNode *node, const char *xmlContent) {
   node->type = COMMENT;
   i++;
-  if (xmlContent[i] != '-' || xmlContent[i+1] != '-') {
+  if (xmlContent[i] != '-' || xmlContent[i + 1] != '-') {
     PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
     return;
   }
-  i+=2;
+  i += 2;
 
-  while (xmlContent[i] != '\0' || xmlContent[i+1] != '\0') {
-    if (xmlContent[i] == '-' && xmlContent[i + 1] == '-' && xmlContent[i + 2] == '>') {
+  while (xmlContent[i] != '\0' || xmlContent[i + 1] != '\0') {
+    if (xmlContent[i] == '-' && xmlContent[i + 1] == '-' &&
+        xmlContent[i + 2] == '>') {
       // Found the end of the comment
-      if (xmlContent[i-1] == '-') {
-        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i-1);
+      if (xmlContent[i - 1] == '-') {
+        PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)",
+                     i - 1);
         return;
       }
       i += 3;
@@ -197,10 +223,9 @@ static void parseComment(XMLNode* node, const char *xmlContent) {
     i++;
   }
   PyErr_SetString(PyExc_Exception, "unclosed token");
-  return;
 }
 
-static void parseText(XMLNode* node, const char *xmlContent) {
+static void parseText(XMLNode *node, const char *xmlContent) {
   node->type = TEXT;
   bool isSpace = false;
 
@@ -223,7 +248,7 @@ static void parseText(XMLNode* node, const char *xmlContent) {
 static std::vector<XMLNode> splitNodes(const char *xmlContent) {
   std::vector<XMLNode> nodes;
   i = 0;
-  
+
   while (xmlContent[i] != '\0') {
     XMLNode node;
     if (xmlContent[i] == '<') {
@@ -257,7 +282,13 @@ static PyObject *createDict(const std::vector<Pair> &attributes) {
   return dict;
 }
 
-PyDoc_STRVAR(xml_parse_doc, "Parse XML content into a dictionary.");
+PyDoc_STRVAR(xml_parse_doc, "parse(xml_content: str) -> dict:\n"
+                            "...\n\n"
+                            "Parse XML content into a dictionary.\n\n"
+                            "Args:\n\t"
+                            "xml_content (str): xml document to be parsed.\n"
+                            "Returns:\n\t"
+                            "dict: Dictionary of the xml dom.\n");
 static PyObject *xml_parse(PyObject *self, PyObject *args) {
   const char *xmlContent;
 
@@ -281,7 +312,12 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
     PyObject *childKey = PyUnicode_FromString(node.elementName.c_str());
 
     if (node.type == TEXT) {
-      PyDict_SetItemString(currDict, "#text", childKey);
+      PyObject *item = PyDict_GetItemString(currDict, "#text");
+      if (item != NULL) {
+        PyDict_SetItemString(currDict, "#text", PyUnicode_Concat(item, childKey));
+      } else {
+        PyDict_SetItemString(currDict, "#text", childKey);
+      }
     } else if (node.type == CONTAINER_OPEN || node.type == PRIMITIVE) {
       PyObject *d = createDict(node.attr);
 
@@ -292,8 +328,8 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
           PyList_Append(item, d);
         } else {
           PyObject *children = PyList_New(2);
-          PyList_SetItem(children, 0, item); 
-          PyList_SetItem(children, 1, d); 
+          PyList_SetItem(children, 0, item);
+          PyList_SetItem(children, 1, d);
           PyDict_SetItem(currDict, childKey, children);
           isList = true;
         }
@@ -309,7 +345,9 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
       }
     } else if (node.type == CONTAINER_CLOSE) {
       if (containerStackNames.back() != node.elementName) {
-        PyErr_Format(PyExc_Exception, "tag mismatch ('%U' does not match the last start tag)", childKey);
+        PyErr_Format(PyExc_Exception,
+                     "tag mismatch ('%U' does not match the last start tag)",
+                     childKey);
       }
       containerStackNames.pop_back();
       containerStack.pop_back();
@@ -320,7 +358,8 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
   }
 
   if (containerStack.size() > 1) {
-    PyErr_Format(PyExc_Exception, "not well formed (%d unclosed tags)", containerStack.size()-1);
+    PyErr_Format(PyExc_Exception, "not well formed (%d unclosed tags)",
+                 containerStack.size() - 1);
     return NULL;
   }
 
@@ -330,11 +369,10 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
 }
 
 static PyMethodDef XMLParserMethods[] = {
-    {"parse", xml_parse, METH_VARARGS, xml_parse_doc}, {NULL, NULL, 0, NULL}};
+    {"parse", (PyCFunction)xml_parse, METH_VARARGS, xml_parse_doc},
+    {NULL, NULL, 0, NULL}};
 
-static struct PyModuleDef xmlparsermodule = {
-    PyModuleDef_HEAD_INIT, "xmlpydict", NULL, -1, XMLParserMethods};
+static struct PyModuleDef xmlparsermodule = {PyModuleDef_HEAD_INIT, "xmlpydict",
+                                             NULL, -1, XMLParserMethods};
 
-PyMODINIT_FUNC PyInit_xmlpydict() {
-  return PyModule_Create(&xmlparsermodule);
-}
+PyMODINIT_FUNC PyInit_xmlpydict() { return PyModule_Create(&xmlparsermodule); }

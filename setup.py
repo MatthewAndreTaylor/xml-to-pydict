@@ -19,5 +19,5 @@ setup(
         Extension("xmlpydict", ["src/xmlparse.cpp"]),
     ],
     cmdclass={"build_ext": build_ext},
-    package_data={"xmlpydict": ["py.typed"]},
+    package_data={"xmlpydict": ["py.typed"], "": ["xmlpydict.pyi"]},
 )

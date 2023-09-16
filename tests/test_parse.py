@@ -4,6 +4,7 @@ import json
 
 
 def test_simple():
+    assert parse("") == {}
     assert parse("<p/>") == {"p": {}}
     assert parse("<p></p>") == {"p": {}}
     assert parse('<p width="10"></p>') == {"p": {"@width": "10"}}
@@ -15,6 +16,12 @@ def test_simple():
     }
     assert parse('<p width="10" height="20"/>') == {
         "p": {"@width": "10", "@height": "20"}
+    }
+    assert parse('<p width = "10"  height = "20"/>') == {
+        "p": {"@width": "10", "@height": "20"}
+    }
+    assert parse("<p>Hey <b>bold</b>There</p>") == {
+        "p": {"#text": "HeyThere", "b": {"#text": "bold"}}
     }
 
     assert (
