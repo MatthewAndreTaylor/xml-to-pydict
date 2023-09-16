@@ -225,6 +225,34 @@ static void parseComment(XMLNode *node, const char *xmlContent) {
   PyErr_SetString(PyExc_Exception, "unclosed token");
 }
 
+static void parseCData(XMLNode *node, const char *xmlContent) {
+  node->type = TEXT;
+  i+=2;
+  std::string cdata = "CDATA[";
+  size_t j = 0;
+  while (xmlContent[i] != '\0') {
+    if (j >= cdata.size()) {
+      break;
+    }
+    if (cdata[j] != xmlContent[i]) {
+      PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
+      return;
+    }
+    i++;
+    j++;
+  }
+  while (xmlContent[i] != '\0' || xmlContent[i + 1] != '\0') {
+    if (xmlContent[i] == ']' && xmlContent[i + 1] == ']' &&
+        xmlContent[i + 2] == '>') {
+      i += 3;
+      return;
+    }
+    node->elementName.push_back(xmlContent[i]);
+    i++;
+  }
+  PyErr_SetString(PyExc_Exception, "unclosed token");
+}
+
 static void parseText(XMLNode *node, const char *xmlContent) {
   node->type = TEXT;
   bool isSpace = false;
@@ -256,7 +284,11 @@ static std::vector<XMLNode> splitNodes(const char *xmlContent) {
       if (xmlContent[i] == '/') {
         parseContainerClose(&node, xmlContent);
       } else if (xmlContent[i] == '!') {
-        parseComment(&node, xmlContent);
+        if (xmlContent[i+1] == '[') {
+          parseCData(&node, xmlContent);
+        } else {
+          parseComment(&node, xmlContent);
+        }
       } else {
         parseContainerOpen(&node, xmlContent);
       }

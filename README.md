@@ -26,9 +26,27 @@ pip install xmlpydict
 {'person': {'@name': 'Matthew', '#text': 'Hello!'}}
 ```
 
-## Tags
+## Goals
 
-# dict.get(key[, default]) will not cause exceptions
+Create a consistent parsing strategy between xml and python dictionaries.
+xmlpydict takes a more laid pack approack to enforcing the syntax of xml.
+
+## Features
+
+xmlpydict allows for multiple root elements.
+The root object is treated as the python object.
+
+### xmlpydict supports the following 
+
+[CDataSection](https://www.w3.org/TR/xml/#sec-cdata-sect):  CDATA Sections are stored as {'#text': CData}.
+
+[Comments](https://www.w3.org/TR/xml/#sec-comments):  Comments are tokenized for corectness, but have no effect in what is returned.
+
+[Element Tags](https://www.w3.org/TR/xml/#sec-starttags):  Allows for duplicate attributes, however only the latest defined will be taken. 
+
+[Characters](https://www.w3.org/TR/xml/#charsets):  Similar to CDATA text is stored as {'#text': Char} , however this text is stripped.
+
+### dict.get(key[, default]) will not cause exceptions
 
 ```py
 # Empty tags are containers
@@ -42,3 +60,21 @@ None
 >>> parse("")
 {}
 ```
+
+### Exceptions
+
+```py
+# Grammar and structure of the xml_content is checked while parsing
+>>> from xmlpydict import parse
+>>> parse("<a></ a>")
+Exception: not well formed (violation at pos=5)
+```
+
+
+### Unsupported
+
+Prolog / Enforcing Document Type Definition and Element Type Declarations
+
+Entity Referencing
+
+Namespaces

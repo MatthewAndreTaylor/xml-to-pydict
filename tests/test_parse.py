@@ -66,6 +66,12 @@ def test_simple():
     )
 
 
+def test_cdata():
+    assert parse("<content><![CDATA[<p>This is a paragraph</p>]]></content>") == {
+        "content": {"#text": "<p>This is a paragraph</p>"}
+    }
+
+
 def test_nested():
     assert parse("<book><p/></book> ") == {"book": {"p": {}}}
     assert parse("<book><p></p></book>") == {"book": {"p": {}}}
