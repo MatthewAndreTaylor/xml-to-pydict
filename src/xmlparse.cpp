@@ -303,10 +303,10 @@ static std::vector<XMLNode> splitNodes(const char *xmlContent) {
   return nodes;
 }
 
-static PyObject *createDict(const std::vector<Pair> &attributes) {
+static PyObject *createDict(const std::vector<Pair> &attributes, char* attributePrefix) {
   PyObject *dict = PyDict_New();
   for (const Pair &attr : attributes) {
-    const std::string &key = "@" + attr.key;
+    const std::string &key = attributePrefix + attr.key;
     PyObject *val = PyUnicode_FromString(attr.value.c_str());
     PyDict_SetItemString(dict, key.c_str(), val);
   }
@@ -314,17 +314,20 @@ static PyObject *createDict(const std::vector<Pair> &attributes) {
   return dict;
 }
 
-PyDoc_STRVAR(xml_parse_doc, "parse(xml_content: str) -> dict:\n"
+PyDoc_STRVAR(xml_parse_doc, "parse(xml_content: str, attr_prefix=\"@\") -> dict:\n"
                             "...\n\n"
                             "Parse XML content into a dictionary.\n\n"
                             "Args:\n\t"
                             "xml_content (str): xml document to be parsed.\n"
                             "Returns:\n\t"
                             "dict: Dictionary of the xml dom.\n");
-static PyObject *xml_parse(PyObject *self, PyObject *args) {
+static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
   const char *xmlContent;
+  char* attributePrefix = "@";
 
-  if (!PyArg_ParseTuple(args, "s", &xmlContent)) {
+  static char *kwlist[] = {"xml_content", "attr_prefix", NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|s", kwlist, &xmlContent, &attributePrefix)) {
     return NULL;
   }
 
@@ -351,7 +354,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
         PyDict_SetItemString(currDict, "#text", childKey);
       }
     } else if (node.type == CONTAINER_OPEN || node.type == PRIMITIVE) {
-      PyObject *d = createDict(node.attr);
+      PyObject *d = createDict(node.attr, attributePrefix);
 
       PyObject *item = PyDict_GetItem(currDict, childKey);
       if (item != NULL) {
@@ -401,7 +404,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args) {
 }
 
 static PyMethodDef XMLParserMethods[] = {
-    {"parse", (PyCFunction)xml_parse, METH_VARARGS, xml_parse_doc},
+    {"parse", (PyCFunction)xml_parse, METH_VARARGS | METH_KEYWORDS, xml_parse_doc},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef xmlparsermodule = {PyModuleDef_HEAD_INIT, "xmlpydict",

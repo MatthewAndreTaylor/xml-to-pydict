@@ -61,6 +61,16 @@ None
 {}
 ```
 
+### Attribute prefixing
+
+```py
+# Change prefix from default "@" with keyword argument attr_prefix
+>>> from xmlpydict import parse
+>>> parse('<p width="10" height="5"></p>', attr_prefix="$")
+{"p": {"$width": "10", "$height": "5"}}
+```
+
+
 ### Exceptions
 
 ```py

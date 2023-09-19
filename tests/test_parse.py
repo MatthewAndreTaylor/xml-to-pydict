@@ -288,3 +288,11 @@ def test_exception():
     for xml_str in xml_strings:
         with pytest.raises(Exception):
             parse(xml_str)
+
+
+def test_prefix():
+    assert parse("<p></p>", attr_prefix="$") == {"p": {}}
+    assert parse('<p width="10"></p>', attr_prefix="$") == {"p": {"$width": "10"}}
+    assert parse('<p width="10" height="5"></p>', attr_prefix="$") == {
+        "p": {"$width": "10", "$height": "5"}
+    }
