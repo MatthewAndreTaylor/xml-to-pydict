@@ -273,9 +273,28 @@ static void parseText(XMLNode *node, const char *xmlContent) {
   }
 }
 
+static void parseProlog(const char *xmlContent) {
+  const char* startTag = "<?xml";
+  int j = 0;
+  for (j = 0; j < 5 && xmlContent[j] != '\0'; j++) {
+      if (xmlContent[j] != startTag[j]) {
+          return;
+      }
+  }
+  i = j;
+  while (xmlContent[i] != '\0') {
+    if (xmlContent[i] == '>'){
+      i++;
+      break;
+    }
+    i++;
+  }
+}
+
 static std::vector<XMLNode> splitNodes(const char *xmlContent) {
   std::vector<XMLNode> nodes;
   i = 0;
+  parseProlog(xmlContent);
 
   while (xmlContent[i] != '\0') {
     XMLNode node;

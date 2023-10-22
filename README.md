@@ -28,13 +28,12 @@ pip install xmlpydict
 
 ## Goals
 
-Create a consistent parsing strategy between xml and python dictionaries.
-xmlpydict takes a more laid pack approack to enforcing the syntax of xml.
+Create a consistent parsing strategy between XML and Python dictionaries. xmlpydict takes a more laid-back approach to enforce the syntax of XML. However, still ensures fast speeds by using finite automata.
 
 ## Features
 
 xmlpydict allows for multiple root elements.
-The root object is treated as the python object.
+The root object is treated as the Python object.
 
 ### xmlpydict supports the following 
 

@@ -1,6 +1,6 @@
-def parse(xml_content: str) -> dict:
+def parse(xml_content: str, attr_prefix="@") -> dict:
     i = 0
-    key = "@"
+    key = attr_prefix
     val = ""
     xml_content += " "
 
@@ -35,7 +35,7 @@ def parse(xml_content: str) -> dict:
                                 in_quotes = not in_quotes
                                 if not in_quotes and key != "" and val != "":
                                     d[key] = val
-                                    key = "@"
+                                    key = attr_prefix
                                     val = ""
                             elif in_quotes:
                                 val += xml_content[i]
@@ -63,6 +63,6 @@ def parse(xml_content: str) -> dict:
             element_name = xml_content[i:j].strip()
             i = j
             if len(element_name) > 0:
-                curr_dict["#text"] = element_name
+                curr_dict["#text"] = curr_dict.setdefault("#text", "") + element_name
 
     return container_stack.pop()
