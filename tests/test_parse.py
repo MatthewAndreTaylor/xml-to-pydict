@@ -70,6 +70,9 @@ def test_cdata():
     assert parse("<content><![CDATA[<p>This is a paragraph</p>]]></content>") == {
         "content": {"#text": "<p>This is a paragraph</p>"}
     }
+    assert parse(
+        "<special_chars><![CDATA[$ ^ * % & <> () + - + ` ~]]></special_chars>"
+    ) == {"special_chars": {"#text": "$ ^ * % & <> () + - + ` ~"}}
 
 
 def test_nested():
@@ -101,6 +104,14 @@ def test_comment():
   <lake>Content</lake>
 </world>"""
     assert parse(comment) == {"world": {"lake": {"#text": "Content"}}}
+    multiple_comments = """<book>
+    <!-- Comment 0 -->
+    <!-- Comment 1 -->
+    <lines>510</lines>
+    <!-- Comment 2 -->
+    <!-- -->
+</book>"""
+    assert parse(multiple_comments) == {"book": {"lines": {"#text": "510"}}}
 
 
 def test_files():
@@ -284,6 +295,14 @@ def test_exception():
         "<p width=5'/>",
         "</p>",
         "<pwidth='5'/>",
+        "<!---->",
+        "<a></p>",
+        "<></>",
+        "</>",
+        "<",
+        ">",
+        "<p>'Hello'</p>",
+        "<p>Matt & Taylor</p>",
     ]
     for xml_str in xml_strings:
         with pytest.raises(Exception):
@@ -295,4 +314,39 @@ def test_prefix():
     assert parse('<p width="10"></p>', attr_prefix="$") == {"p": {"$width": "10"}}
     assert parse('<p width="10" height="5"></p>', attr_prefix="$") == {
         "p": {"$width": "10", "$height": "5"}
+    }
+    assert parse('<p width="10" height="5"></p>', attr_prefix="$$$$$$$$$") == {
+        "p": {"$$$$$$$$$width": "10", "$$$$$$$$$height": "5"}
+    }
+    assert parse('<p width="10" height="5"></p>', attr_prefix="") == {
+        "p": {"width": "10", "height": "5"}
+    }
+
+
+def test_document():
+    s = """<?xml version="1.0" encoding="UTF-8"?><repository>
+  <project pypi="xmlpydict">
+    <title>XML document parser</title>
+    <author>Matthew Taylor</author>
+  </project>
+  <project pypi="blank">
+    <title>Test project</title>
+    <author>Matthew Taylor</author>
+  </project>
+</repository>"""
+    assert parse(s) == {
+        "repository": {
+            "project": [
+                {
+                    "@pypi": "xmlpydict",
+                    "title": {"#text": "XML document parser"},
+                    "author": {"#text": "Matthew Taylor"},
+                },
+                {
+                    "@pypi": "blank",
+                    "title": {"#text": "Test project"},
+                    "author": {"#text": "Matthew Taylor"},
+                },
+            ]
+        }
     }

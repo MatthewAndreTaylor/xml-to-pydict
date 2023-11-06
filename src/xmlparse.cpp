@@ -258,7 +258,7 @@ static void parseText(XMLNode *node, const char *xmlContent) {
   bool isSpace = false;
 
   while (xmlContent[i] != '\0' && xmlContent[i] != '<') {
-    if (xmlContent[i] == '&') {
+    if (xmlContent[i] == '&' || xmlContent[i] == '>' || xmlContent[i] == '\"' || xmlContent[i] == '\'') {
       PyErr_Format(PyExc_Exception, "not well formed (violation at pos=%d)", i);
       return;
     }
@@ -281,14 +281,18 @@ static void parseProlog(const char *xmlContent) {
           return;
       }
   }
+  if (xmlContent[j] == '\0') {
+    return;
+  }
   i = j;
   while (xmlContent[i] != '\0') {
-    if (xmlContent[i] == '>'){
-      i++;
-      break;
+    if (xmlContent[i] == '?' && xmlContent[i+1] == '>'){
+      i+=2;
+      return;
     }
     i++;
   }
+  PyErr_SetString(PyExc_Exception, "unclosed token");
 }
 
 static std::vector<XMLNode> splitNodes(const char *xmlContent) {
@@ -316,6 +320,9 @@ static std::vector<XMLNode> splitNodes(const char *xmlContent) {
     }
     if (!node.elementName.empty()) {
       nodes.push_back(node);
+    }
+    if (PyErr_Occurred() != NULL) {
+      break;
     }
   }
 
@@ -398,7 +405,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
         containerStackNames.push_back(node.elementName);
       }
     } else if (node.type == CONTAINER_CLOSE) {
-      if (containerStackNames.back() != node.elementName) {
+      if (containerStackNames.size() <= 0 || containerStackNames.back() != node.elementName) {
         PyErr_Format(PyExc_Exception,
                      "tag mismatch ('%U' does not match the last start tag)",
                      childKey);
