@@ -21,7 +21,7 @@ def test_simple():
         "p": {"@width": "10", "@height": "20"}
     }
     assert parse("<p>Hey <b>bold</b>There</p>") == {
-        "p": {"#text": "HeyThere", "b": {"#text": "bold"}}
+        "p": {"#text": "HeyThere", "b": "bold"}
     }
 
     assert (
@@ -68,11 +68,11 @@ def test_simple():
 
 def test_cdata():
     assert parse("<content><![CDATA[<p>This is a paragraph</p>]]></content>") == {
-        "content": {"#text": "<p>This is a paragraph</p>"}
+        "content": "<p>This is a paragraph</p>"
     }
     assert parse(
         "<special_chars><![CDATA[$ ^ * % & <> () + - + ` ~]]></special_chars>"
-    ) == {"special_chars": {"#text": "$ ^ * % & <> () + - + ` ~"}}
+    ) == {"special_chars": "$ ^ * % & <> () + - + ` ~"}
 
 
 def test_nested():
@@ -103,7 +103,7 @@ def test_comment():
   <!-- $comment+++@python -->
   <lake>Content</lake>
 </world>"""
-    assert parse(comment) == {"world": {"lake": {"#text": "Content"}}}
+    assert parse(comment) == {"world": {"lake": "Content"}}
     multiple_comments = """<book>
     <!-- Comment 0 -->
     <!-- Comment 1 -->
@@ -111,7 +111,7 @@ def test_comment():
     <!-- Comment 2 -->
     <!-- -->
 </book>"""
-    assert parse(multiple_comments) == {"book": {"lines": {"#text": "510"}}}
+    assert parse(multiple_comments) == {"book": {"lines": "510"}}
 
 
 def test_files():
@@ -303,6 +303,7 @@ def test_exception():
         ">",
         "<p>'Hello'</p>",
         "<p>Matt & Taylor</p>",
+        "<nested></p></nested>"
     ]
     for xml_str in xml_strings:
         with pytest.raises(Exception):
@@ -339,13 +340,13 @@ def test_document():
             "project": [
                 {
                     "@pypi": "xmlpydict",
-                    "title": {"#text": "XML document parser"},
-                    "author": {"#text": "Matthew Taylor"},
+                    "title": "XML document parser",
+                    "author": "Matthew Taylor",
                 },
                 {
                     "@pypi": "blank",
-                    "title": {"#text": "Test project"},
-                    "author": {"#text": "Matthew Taylor"},
+                    "title": "Test project",
+                    "author": "Matthew Taylor",
                 },
             ]
         }
