@@ -365,6 +365,7 @@ PyDoc_STRVAR(xml_parse_doc, "parse(xml_content: str, attr_prefix=\"@\") -> dict:
 static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
   const char *xmlContent;
   char* attributePrefix = "@";
+  char* cdata_key = "#text";
 
   static char *kwlist[] = {"xml_content", "attr_prefix", NULL};
 
@@ -388,11 +389,11 @@ static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *childKey = PyUnicode_FromString(node.elementName.c_str());
 
     if (node.type == TEXT) {
-      PyObject *item = PyDict_GetItemString(currDict, "#text");
+      PyObject *item = PyDict_GetItemString(currDict, cdata_key);
       if (item != NULL) {
-        PyDict_SetItemString(currDict, "#text", PyUnicode_Concat(item, childKey));
+        PyDict_SetItemString(currDict, cdata_key, PyUnicode_Concat(item, childKey));
       } else {
-        PyDict_SetItemString(currDict, "#text", childKey);
+        PyDict_SetItemString(currDict, cdata_key, childKey);
       }
     } else if (node.type == CONTAINER_OPEN || node.type == PRIMITIVE) {
       PyObject *d = createDict(node.attr, attributePrefix);
@@ -430,6 +431,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
       containerStack.pop_back();
       currDict = containerStack.back();
 
+      // If there are no child attributes do not nest CDATA
       PyObject *d = PyDict_GetItem(currDict, childKey);
       if (PyList_Check(d)) {
         Py_ssize_t len = PyList_Size(d);
@@ -437,7 +439,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
           PyObject* dict = PyList_GetItem(d, i);
           if (PyDict_Check(dict)) {
             if (PyDict_Size(dict) == 1) {
-              PyObject *item = PyDict_GetItemString(dict, "#text");
+              PyObject *item = PyDict_GetItemString(dict, cdata_key);
               if (item != NULL) {
                 PyList_SetItem(d, i, item);
               }
@@ -447,7 +449,7 @@ static PyObject *xml_parse(PyObject *self, PyObject *args, PyObject *kwargs) {
       }
       else {
         if (PyDict_Size(d) == 1) {
-          PyObject *item = PyDict_GetItemString(d, "#text");
+          PyObject *item = PyDict_GetItemString(d, cdata_key);
           if (item != NULL) {
             PyDict_SetItem(currDict, childKey, item);
           }
