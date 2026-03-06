@@ -1,5 +1,3 @@
-# cython: boundscheck=False, wraparound=False
-
 cdef object _MISSING = object()
 
 cdef dict _update_children(dict target, str key, object value):
