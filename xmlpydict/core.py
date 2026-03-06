@@ -5,7 +5,7 @@ class NativePyDictHandler:
     """
     Handler class for parsing XML content into a Python dictionary using the expat parser.
     """
-    
+
     def __init__(
         self,
         attr_prefix: str = "@",
@@ -17,7 +17,6 @@ class NativePyDictHandler:
         self.item = None
         # Use list instead of string as in cpp version for efficiency
         self.data = []
-
         self.item_stack = []
         self.data_stack = []
 
@@ -27,8 +26,9 @@ class NativePyDictHandler:
     def startElement(self, name, attrs):
         self.item_stack.append(self.item)
         self.data_stack.append(self.data)
-        new_dict = {self.attr_prefix + key: value for key, value in attrs.items()}
-        self.item = new_dict or None
+        self.item = (
+            None if not attrs else {self.attr_prefix + k: v for k, v in attrs.items()}
+        )
         self.data = []
 
     @staticmethod

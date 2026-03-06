@@ -38,8 +38,7 @@ def test_simple():
     }
 
     assert (
-        parse(
-            """<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+        parse("""<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:rgb(255,255,0);stop-opacity:1" />
@@ -47,8 +46,7 @@ def test_simple():
     </linearGradient>
   </defs>
   <rect width="200" height="100" fill="url(#gradient)" />
-</svg>"""
-        )
+</svg>""")
         == {
             "svg": {
                 "@height": "100",
@@ -143,8 +141,7 @@ def test_files():
 </svg>"""
     )
 
-    json_data = json.loads(
-        """{
+    json_data = json.loads("""{
     "svg": {
         "@xmlns": "http://www.w3.org/2000/svg",
         "@width": "400",
@@ -225,8 +222,7 @@ def test_files():
             }
         ]
     }
-}"""
-    )
+}""")
 
     assert svg_data == json_data
 
@@ -245,8 +241,7 @@ def test_files():
 </svg>"""
     )
 
-    json_data = json.loads(
-        """{
+    json_data = json.loads("""{
     "svg": {
         "@xmlns": "http://www.w3.org/2000/svg",
         "@width": "200",
@@ -285,8 +280,7 @@ def test_files():
             }
         }
     }
-}"""
-    )
+}""")
 
     assert svg_data == json_data
 
@@ -383,3 +377,32 @@ def test_parse_file(tmp_path):
             ]
         }
     }
+
+
+import gc
+import tracemalloc
+
+
+def run_many():
+    xml = "<a><p width='10'>Hello World</p></a>"
+    for _ in range(20000):
+        parse(xml)
+
+
+def test_no_memory_growth():
+    tracemalloc.start()
+
+    run_many()
+    gc.collect()
+    before = tracemalloc.take_snapshot()
+    gc.collect()
+
+    run_many()
+    gc.collect()
+    after = tracemalloc.take_snapshot()
+
+    stats = after.compare_to(before, "lineno")
+    total = sum(stat.size_diff for stat in stats)
+
+    # Size difference should be small (allowing for some noise for measurement calc)
+    assert total < 1024, f"Memory growth detected: {total} bytes"
