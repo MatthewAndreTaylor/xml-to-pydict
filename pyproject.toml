@@ -1,10 +1,10 @@
 [build-system]
-requires = [ "setuptools>=61.0", "wheel" ]
+requires = [ "setuptools>=61.0", "wheel", "cython" ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "xmlpydict"
-version = "0.0.17"
+version = "0.0.16"
 description="xml to dictionary tool for python"
 authors = [
     {name = "Matthew Taylor", email = "matthew.taylor.andre@gmail.com"},
@@ -33,4 +33,10 @@ content-type = "text/markdown"
 
 [project.optional-dependencies]
 tests = [ "pytest", "requests" ]
-handler = [ "pyxmlhandler @ file:xmlpydict/pyxmlhandler" ]
+
+[tool.setuptools]
+packages = ["xmlpydict"]
+
+[[tool.setuptools.ext-modules]]
+name = "xmlpydict.pyxmlhandler"
+sources = ["xmlpydict/pyxmlhandler.pyx"]
