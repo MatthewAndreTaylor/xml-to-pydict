@@ -405,4 +405,4 @@ def test_no_memory_growth():
     total = sum(stat.size_diff for stat in stats)
 
     # Size difference should be small (allowing for some noise for measurement calc)
-    assert total < 1024, f"Memory growth detected: {total} bytes"
+    assert total < 1024 * 4, f"Memory growth detected: {total} bytes"

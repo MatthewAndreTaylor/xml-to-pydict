@@ -1,16 +1,19 @@
+cdef object _MISSING = object()
+
 cdef dict _update_children(dict target, str key, object value):
     cdef object existing
     if target is None:
         target = {}
-    
-    if key not in target:
+
+    existing = target.get(key, _MISSING)
+
+    if existing is _MISSING:
         target[key] = value
+    elif type(existing) is list:
+        existing.append(value)
     else:
-        existing = target[key]
-        if isinstance(existing, list):
-            existing.append(value)
-        else:
-            target[key] = [existing, value]
+        target[key] = [existing, value]
+
     return target
 
 
@@ -44,10 +47,10 @@ cdef class _PyDictHandler:
     cpdef void startElement(self, str name, dict attrs):
         self.item_stack.append(self.item)
         self.data_stack.append(self._data)
+        self._data = []
         self.item = (
             None if not attrs else {self.attr_prefix + k: v for k, v in attrs.items()}
         )
-        self._data = []
                 
     cpdef void endElement(self, str name):
         if self.data_stack:
