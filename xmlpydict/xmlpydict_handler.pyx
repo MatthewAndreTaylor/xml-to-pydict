@@ -1,10 +1,9 @@
+# cython: boundscheck=False, wraparound=False
+
 cdef object _MISSING = object()
 
 cdef dict _update_children(dict target, str key, object value):
     cdef object existing
-    if target is None:
-        target = {}
-
     existing = target.get(key, _MISSING)
 
     if existing is _MISSING:
@@ -22,7 +21,7 @@ cdef class _PyDictHandler:
     Handler class for parsing XML content into a Python dictionary using the expat parser.
     """
     
-    cdef public object item
+    cdef public dict item
     cdef list _data
     cdef list item_stack
     cdef list data_stack
@@ -36,7 +35,7 @@ cdef class _PyDictHandler:
     ):
         self.attr_prefix = attr_prefix
         self.cdata_key = cdata_key
-        self.item = None
+        self.item = {}
         self._data = []
         self.item_stack = []
         self.data_stack = []
@@ -48,19 +47,16 @@ cdef class _PyDictHandler:
         self.item_stack.append(self.item)
         self.data_stack.append(self._data)
         self._data = []
-        self.item = (
-            None if not attrs else {self.attr_prefix + k: v for k, v in attrs.items()}
-        )
+        self.item = {self.attr_prefix + k: v for k, v in attrs.items()}
                 
     cpdef void endElement(self, str name):
         if self.data_stack:
             py_data = "".join(self._data).strip() or None
             temp_item = self.item
-
             self.item = self.item_stack.pop()
             self._data = self.data_stack.pop()
 
-            if temp_item is not None:
+            if temp_item:
                 if py_data:
                     temp_item[self.cdata_key] = py_data
                 self.item = _update_children(self.item, name, temp_item)

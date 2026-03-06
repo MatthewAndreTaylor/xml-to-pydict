@@ -1,5 +1,5 @@
 try:
-    from pyxmlhandler import _PyDictHandler
+    from xmlpydict_handler import _PyDictHandler
 except ImportError:
     from .core import NativePyDictHandler as _PyDictHandler
 from xml.parsers import expat
