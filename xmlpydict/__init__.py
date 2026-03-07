@@ -53,6 +53,7 @@ def parse_file(file_path, attr_prefix: str = "@", cdata_key: str = "#text") -> d
 def pydict_parser(attr_prefix: str = "@", cdata_key: str = "#text"):
     handler = _PyDictHandler(attr_prefix=attr_prefix, cdata_key=cdata_key)
     parser = expat.ParserCreate()
+    parser.buffer_text = True
     parser.CharacterDataHandler = handler.characters
     parser.StartElementHandler = handler.startElement
     parser.EndElementHandler = handler.endElement
@@ -90,12 +91,10 @@ def parse_xml_collections(
                     yield handler.item
                 break
 
-            buffer += chunk
+            buffer.extend(chunk)
             while True:
                 idx = buffer.find(start_token, 1)
                 if idx == -1:
-                    parser.Parse(buffer, False)
-                    buffer = bytearray()
                     break
                 
                 parser.Parse(buffer[:idx], True)
