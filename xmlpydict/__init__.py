@@ -3,7 +3,6 @@ try:
 except ImportError:
     from .core import NativePyDictHandler as _PyDictHandler
 from xml.parsers import expat
-from io import Reader
 
 
 def parse(xml_content, attr_prefix: str = "@", cdata_key: str = "#text") -> dict:
@@ -60,7 +59,7 @@ def pydict_parser(attr_prefix: str = "@", cdata_key: str = "#text"):
 
 
 def parse_xml_archive(
-    file: Reader[bytes],
+    file,
     attr_prefix: str = "@",
     cdata_key: str = "#text",
     chunk_size: int = 65536,
