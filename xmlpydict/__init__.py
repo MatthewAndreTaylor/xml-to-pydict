@@ -3,6 +3,7 @@ try:
 except ImportError:
     from .core import NativePyDictHandler as _PyDictHandler
 from xml.parsers import expat
+from io import Reader
 
 
 def parse(xml_content, attr_prefix: str = "@", cdata_key: str = "#text") -> dict:
@@ -48,8 +49,6 @@ def parse_file(file_path, attr_prefix: str = "@", cdata_key: str = "#text") -> d
     return handler.item
 
 
-
-
 def pydict_parser(attr_prefix: str = "@", cdata_key: str = "#text"):
     handler = _PyDictHandler(attr_prefix=attr_prefix, cdata_key=cdata_key)
     parser = expat.ParserCreate()
@@ -60,18 +59,18 @@ def pydict_parser(attr_prefix: str = "@", cdata_key: str = "#text"):
     return handler, parser
 
 
-def parse_xml_collections(
-    file_path,
+def parse_xml_archive(
+    file: Reader[bytes],
     attr_prefix: str = "@",
     cdata_key: str = "#text",
     chunk_size: int = 65536,
     start_token: bytes = b"<?xml",
 ):
     """
-    Parse collections of xml documents based on a delimeter start_token
+    Parse an archive of xml documents based on a delimeter start_token
 
     Args:
-        file_path: The path to the XML file to be parsed.
+        file: The file object containing the XML content to be parsed.
         attr_prefix: The prefix to use for attributes in the resulting dictionary.
         cdata_key: The key to use for character data in the resulting dictionary.
         start_token: The byte sequence that delimits the start of each XML document.
@@ -82,23 +81,24 @@ def parse_xml_collections(
     handler, parser = pydict_parser(attr_prefix=attr_prefix, cdata_key=cdata_key)
     buffer = bytearray()
 
-    with open(file_path, "rb") as f:
+    while True:
+        chunk = file.read(chunk_size)
+        if not chunk:
+            if buffer:
+                parser.Parse(buffer, True)
+                yield handler.item
+            break
+
+        buffer.extend(chunk)
         while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                if buffer:
-                    parser.Parse(buffer, True)
-                    yield handler.item
+            idx = buffer.find(start_token, 1)
+            if idx == -1:
                 break
 
-            buffer.extend(chunk)
-            while True:
-                idx = buffer.find(start_token, 1)
-                if idx == -1:
-                    break
-                
-                parser.Parse(buffer[:idx], True)
-                yield handler.item
-                
-                handler, parser = pydict_parser(attr_prefix=attr_prefix, cdata_key=cdata_key)
-                del buffer[:idx]
+            parser.Parse(buffer[:idx], True)
+            yield handler.item
+
+            handler, parser = pydict_parser(
+                attr_prefix=attr_prefix, cdata_key=cdata_key
+            )
+            del buffer[:idx]
